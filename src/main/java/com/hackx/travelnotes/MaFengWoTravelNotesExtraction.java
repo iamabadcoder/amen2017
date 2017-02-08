@@ -73,7 +73,7 @@ public class MaFengWoTravelNotesExtraction {
             if (nextElementSibling.className().contains("article_title")) { /* 标题 */
                 break;
             } else if (nextElementSibling.className().contains("_j_note_content _j_seqitem")) { /* 文本 */
-                Document noteContentDoc = Jsoup.parse(nextElementSibling.html().replace("<br>", "\\n"));
+                Document noteContentDoc = Jsoup.parse(nextElementSibling.html().replaceAll("<br>", "\\n"));
                 contentBlock.put("content", noteContentDoc.text());
                 contentBlock.put("type", "TEXT");
                 contentBlocks.add(contentBlock);

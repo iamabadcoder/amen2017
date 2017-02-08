@@ -15,7 +15,6 @@ import java.util.Map;
 public class TuNiuTravelNotesExtraction {
 
     public static void main(String[] args) {
-        Gson gson = new Gson();
         String targetUrl = "http://www.tuniu.com/trips/12461787";
 
         try {
@@ -24,7 +23,7 @@ public class TuNiuTravelNotesExtraction {
             Map<String, String> travelNotesInfoAttribute = getTravelNotesInfoAttribute(document);
             /*System.out.println(travelNotesInfoAttribute);*/
             List<List<Map<String, String>>> travelNotesContentSections = getTravelNotesContentSections(document);
-            System.out.println(gson.toJson(travelNotesContentSections));
+            System.out.println(new Gson().toJson(travelNotesContentSections));
         } catch (Exception e) {
             System.out.println("Exception when connect to targetUrl:" + targetUrl + e.getMessage());
         }
