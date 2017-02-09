@@ -26,7 +26,7 @@ public class BaiDuTravelNotesExtraction {
             List<List<Map<String, String>>> travelNotesContentSections = getTravelNotesContentSections(document, targetUrl);
             System.out.println(new Gson().toJson(travelNotesContentSections));
         } catch (Exception e) {
-            System.out.println("Exception when connect to targetUrl:" + targetUrl + e.getMessage());
+            System.out.println("Exception when connect to targetUrl:" + targetUrl + e);
         }
     }
 
@@ -34,12 +34,13 @@ public class BaiDuTravelNotesExtraction {
         Map<Integer, String> catalogMap = getCatalogInfo(document);
         List<List<Map<String, String>>> travelNotesContentSections = new ArrayList<>();
         for (Map.Entry<Integer, String> entry : catalogMap.entrySet()) {
-            Element postItemEle = document.getElementById("F" + entry.getKey());
+            System.out.println(entry.getValue());
+            Element postItemEle = document.select("li#F" + entry.getKey()).first();
             if (null != postItemEle) {
                 travelNotesContentSections.add(extractPostItemInfo(postItemEle));
             } else {
                 document = Jsoup.connect(targetUrl + "-" + entry.getKey()).get();
-                postItemEle = document.getElementById("F" + entry.getKey());
+                postItemEle = document.select("li#F" + entry.getKey()).first();
                 if (null != postItemEle) {
                     travelNotesContentSections.add(extractPostItemInfo(postItemEle));
                 }
@@ -50,52 +51,57 @@ public class BaiDuTravelNotesExtraction {
 
     public static List<Map<String, String>> extractPostItemInfo(Element postItemEle) {
         List<Map<String, String>> postItemInfo = new ArrayList<>();
-        Element secondaryEle = postItemEle.select("span.secondary").first();
-        if (null != secondaryEle) {
-            postItemInfo.add(generateBlockMap(secondaryEle.text(), "PUBLISH_TIME"));
-        }
+        try {
+            Element secondaryEle = postItemEle.select("span.secondary").first();
+            if (null != secondaryEle) {
+                postItemInfo.add(generateBlockMap(secondaryEle.text(), "PUBLISH_TIME"));
+            }
 
-        Element titleEle = postItemEle.select(".title").first();
-        if (null != titleEle) {
-            postItemInfo.add(generateBlockMap(titleEle.text(), "TITLE"));
-        }
+            Element titleEle = postItemEle.select(".title").first();
+            if (null != titleEle) {
+                postItemInfo.add(generateBlockMap(titleEle.text(), "TITLE"));
+            }
 
-        Element contentEle = postItemEle.select("div.content").first();
-        Element currChildEle = contentEle.child(0);
-        while (null != currChildEle) {
-            Element notesPhotoImgEle = currChildEle.select("img.notes-photo-img").first();
-            if (null == notesPhotoImgEle) { /* 纯文本 */
-                Document textContentDoc = Jsoup.parse(currChildEle.html().replaceAll("<br>", "\\\\n"));
-                postItemInfo.add(generateBlockMap(textContentDoc.text(), "TEXT"));
-            } else {
-                if (StringUtil.isBlank(currChildEle.text())) { /* 纯图片 */
-                    postItemInfo.add(generateBlockMap(notesPhotoImgEle.attr("src"), "PICTURE"));
-                } else { /* 图片和文本混合 */
-                    List<Node> childNodes = currChildEle.childNodes();
-                    String textBlock = "";
-                    for (Node node : childNodes) {
-                        if ("#text".equals(node.nodeName())) {
-                            textBlock = textBlock + node.outerHtml();
-                            continue;
-                        }
-                        Element childEle = (Element) node;
-                        Element imgEle = childEle.select("img.notes-photo-img").first();
-                        if (null != imgEle) {
-                            if (!StringUtil.isBlank(textBlock)) {
-                                postItemInfo.add(generateBlockMap(textBlock, "TEXT"));
-                                textBlock = "";
+            Element contentEle = postItemEle.select("div.content").first();
+            Element currChildEle = contentEle.child(0);
+
+            while (null != currChildEle) {
+                Element notesPhotoImgEle = currChildEle.select("img.notes-photo-img").first();
+                if (null == notesPhotoImgEle) { /* 纯文本 */
+                    Document textContentDoc = Jsoup.parse(currChildEle.html().replaceAll("<br>", "\\\\n"));
+                    postItemInfo.add(generateBlockMap(textContentDoc.text(), "TEXT"));
+                } else {
+                    if (StringUtil.isBlank(currChildEle.text())) { /* 纯图片 */
+                        postItemInfo.add(generateBlockMap(notesPhotoImgEle.attr("src"), "PICTURE"));
+                    } else { /* 图片和文本混合 */ // TODO 递归了一层,还需要在递归一层,可能有别的方案
+                        List<Node> childNodes = currChildEle.childNodes();
+                        String textBlock = "";
+                        for (Node node : childNodes) {
+                            if ("#text".equals(node.nodeName())) {
+                                textBlock = textBlock + node.outerHtml();
+                                continue;
                             }
-                            postItemInfo.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
-                        } else {
-                            textBlock = textBlock + childEle.text();
+                            Element childEle = (Element) node;
+                            Element imgEle = childEle.select("img.notes-photo-img").first();
+                            if (null != imgEle) {
+                                if (!StringUtil.isBlank(textBlock)) {
+                                    postItemInfo.add(generateBlockMap(textBlock, "TEXT"));
+                                    textBlock = "";
+                                }
+                                postItemInfo.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                            } else {
+                                textBlock = textBlock + childEle.text();
+                            }
                         }
-                    }
-                    if (!StringUtil.isBlank(textBlock)) {
-                        postItemInfo.add(generateBlockMap(textBlock, "TEXT"));
+                        if (!StringUtil.isBlank(textBlock)) {
+                            postItemInfo.add(generateBlockMap(textBlock, "TEXT"));
+                        }
                     }
                 }
+                currChildEle = currChildEle.nextElementSibling();
             }
-            currChildEle = currChildEle.nextElementSibling();
+        } catch (Exception e) {
+            System.out.println("Exception when extractPostItemInfo," + e);
         }
         return postItemInfo;
     }
