@@ -1,63 +1,46 @@
 package com.hackx.travelnotes;
 
-import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.alibaba.trip.tripspider.extractor.TrspExtractUtils;
+import com.alibaba.trip.tripspider.spider.crawler.TrspCrawlerExtractorAdapter;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MaFengWoTravelNotesExtraction {
+public class MafengWoNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
 
-    public static void main(String[] args) {
-        String fileName = "src/main/java/com/hackx/travelnotes/ma_feng_wo_url.txt";
-        String maFengWoDataFile = "src/main/java/com/hackx/travelnotes/ma_feng_wo_data.txt";
+    public JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject row = new JSONObject();
+        row.put("data",extractNotesDetails(document));
+        noteDetail.add(row);
+        return noteDetail;
+    }
+
+    public List<List<Map<String, String>>> extractNotesDetails(Document document) {
+        List<List<Map<String, String>>> travelNotesContentSections = new ArrayList<>();
         try {
-            List<String> lines = Files.readAllLines(Paths.get(fileName), StandardCharsets.UTF_8);
-            for (String line : lines) {
-                String[] fields = line.split("\\t");
-                System.out.println(line);
-                String notesDetails = extractNotesDetails(fields[2]);
-                Thread.sleep(4000);
-                write2File(maFengWoDataFile, notesDetails + "\n");
-            }
+            Map<String, String> travelNotesInfoAttribute = getTravelNotesInfoAttribute(document);
+            List<Map<String, String>> attributeList = new ArrayList<>();
+            attributeList.add(travelNotesInfoAttribute);
+            travelNotesContentSections = getTravelNotesContentSections(document);
+            travelNotesContentSections.add(0, attributeList);
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return travelNotesContentSections;
     }
 
-    public static String extractNotesDetails(String targetUrl) {
-        List<List<Map<String, String>>> travelNotesContentSections = new ArrayList<>();
-        try {
-            Document document = Jsoup.connect(targetUrl).get();
-            /*System.out.println(document.html());*/
-
-            Map<String, String> travelNotesInfoAttribute = getTravelNotesInfoAttribute(document);
-            /*System.out.println(travelNotesInfoAttribute);*/
-            List<Map<String, String>> attributeList = new ArrayList<>();
-            attributeList.add(travelNotesInfoAttribute);
-
-            travelNotesContentSections = getTravelNotesContentSections(document);
-            travelNotesContentSections.add(0, attributeList);
-            /*System.out.println(JSON.toJSONString(travelNotesContentSections));*/
-        } catch (Exception e) {
-            System.out.println("Exception when connect to targetUrl:" + targetUrl + e.getMessage());
-        }
-        return JSON.toJSONString(travelNotesContentSections);
-    }
-
-    public static List<List<Map<String, String>>> getTravelNotesContentSections(Document document) {
+    public List<List<Map<String, String>>> getTravelNotesContentSections(Document document) {
         List<List<Map<String, String>>> contentSectionsList = new ArrayList<>();
         Element jMasterContent = document.select("div._j_master_content").first();
         /* 默认段落 */
@@ -74,7 +57,7 @@ public class MaFengWoTravelNotesExtraction {
         return contentSectionsList;
     }
 
-    public static List<Map<String, String>> extractParagraph(Element articleTitle) {
+    public List<Map<String, String>> extractParagraph(Element articleTitle) {
         List<Map<String, String>> contentBlocks = new ArrayList<>();
 
         /* 标题处理 */
@@ -127,7 +110,7 @@ public class MaFengWoTravelNotesExtraction {
         return contentBlocks;
     }
 
-    public static List<Map<String, String>> extractDefaultParagraph(Element jMasterContent) {
+    public List<Map<String, String>> extractDefaultParagraph(Element jMasterContent) {
         List<Map<String, String>> contentBlocks = new ArrayList<>();
 
         /* 标题处理 */
@@ -164,7 +147,7 @@ public class MaFengWoTravelNotesExtraction {
         return contentBlocks;
     }
 
-    public static Map<String, String> getTravelNotesInfoAttribute(Document document) {
+    public Map<String, String> getTravelNotesInfoAttribute(Document document) {
         Map<String, String> travelNotesInfoAttribute = new HashMap<>();
         travelNotesInfoAttribute.put("type", "NOTES_ATTRIBUTE");
         travelNotesInfoAttribute.put("link", document.baseUri());
@@ -199,16 +182,5 @@ public class MaFengWoTravelNotesExtraction {
         return travelNotesInfoAttribute;
     }
 
-    public static void write2File(String filePath, String data) {
-        try {
-            File file = new File(filePath);
-            FileOutputStream out = new FileOutputStream(file, true);
-            StringBuffer sb = new StringBuffer();
-            out.write((data + "\n").getBytes("utf-8"));
-            out.close();
-        } catch (IOException ex) {
-            System.out.println(ex.getStackTrace());
-        }
-    }
 
 }
