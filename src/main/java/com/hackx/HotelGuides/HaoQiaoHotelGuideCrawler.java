@@ -1,10 +1,7 @@
-package com.hackx.haoqiao;
+package com.hackx.HotelGuides;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
-import com.hackx.HotelGuides.HaoQiaoAttractionsDO;
-import com.hackx.HotelGuides.HaoQiaoHotelGuideDO;
-import com.hackx.HotelGuides.HaoQiaoZoneDO;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
