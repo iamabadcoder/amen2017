@@ -1,4 +1,4 @@
-package com.hackx.notescrawler;
+package com.hackx.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -70,6 +70,11 @@ public class QunarNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 Element howLongEle = forewordListEle.select(".howlong").first();
                 if (null != howLongEle) {
                     noteAttributeMap.put("dayCount", howLongEle.text().replaceAll("天数/?", ""));
+                }
+                /* 人均消费 */
+                Element howMuchEle = forewordListEle.select(".howmuch").first();
+                if (null != howMuchEle) {
+                    noteAttributeMap.put("avgFee", howMuchEle.text().replaceAll("人均费用/?", ""));
                 }
                 /* 人物 */
                 Element whoEle = forewordListEle.select(".who").first();
