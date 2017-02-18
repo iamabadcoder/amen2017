@@ -85,7 +85,7 @@ public class TongChengNotesDetailCrawler2 extends TrspCrawlerExtractorAdapter {
                     travelNoteAttribute.put("beingTime", leftcentText.substring(leftcentText.indexOf("出发时间"), leftcentText.indexOf("游玩天数")).replace("出发时间", ""));
                 }
                 if (leftcentText.indexOf("游玩人数") > leftcentText.indexOf("游玩天数")) {
-                    travelNoteAttribute.put("datCount", leftcentText.substring(leftcentText.indexOf("游玩天数"), leftcentText.indexOf("游玩人数")).replace("游玩天数", ""));
+                    travelNoteAttribute.put("dayCount", leftcentText.substring(leftcentText.indexOf("游玩天数"), leftcentText.indexOf("游玩人数")).replace("游玩天数", ""));
                 }
                 if (leftcentText.indexOf("游玩人数") > 0) {
                     travelNoteAttribute.put("people", leftcentText.substring(leftcentText.indexOf("游玩人数")).replace("游玩人数", ""));

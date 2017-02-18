@@ -212,6 +212,10 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
 
 
     public static void main(String[] args) {
+        generateUrls();
+    }
+
+    public static void generateUrls(){
         String urls = "https://lvyou.baidu.com/notes/d64db92717bab9d9f907574d\n" +
                 "https://lvyou.baidu.com/notes/8a634c347fbd61e899e2d34c\n" +
                 "https://lvyou.baidu.com/notes/c50d553d1354b88b3b405e48\n" +
@@ -368,14 +372,8 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 "https://lvyou.baidu.com/notes/5ad289f5c6c123f341f070b8\n" +
                 "https://lvyou.baidu.com/notes/76519df75a3d1354b88b5f3e\n" +
                 "https://lvyou.baidu.com/notes/302eff3521fca4c4e983b349";
-
-        try {
-            for (String url : urls.split("\\n")) {
-                Document document = Jsoup.connect(url).get();
-                System.out.println(extractNoteDetail(document, url));
-            }
-        } catch (Exception e) {
-
+        for (String url : urls.split("\n")) {
+            System.out.println("url:'" + url + "'");
         }
     }
 }
