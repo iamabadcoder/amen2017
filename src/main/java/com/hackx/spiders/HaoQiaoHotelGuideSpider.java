@@ -1,78 +1,45 @@
-package com.hackx.hotelguide;
+package com.hackx.spiders;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.alibaba.trip.tripspider.extractor.TrspExtractUtils;
+import com.alibaba.trip.tripspider.spider.crawler.TrspCrawlerExtractorAdapter;
 import org.jsoup.Jsoup;
 import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HaoQiaoHotelGuideCrawler {
+public class HaoQiaoHotelGuideSpider extends TrspCrawlerExtractorAdapter {
 
     public static final String SEPARATOR_SIGN = "####";
 
-    public static void main(String[] args) {
-        Map<String, List<String>> siteMap = extractSiteMap("http://www.haoqiao.cn/sitemap.html");
-        System.out.println(siteMap.values().stream().map((city) -> city.size()).reduce((a, b) -> a + b).get());
-        for (Map.Entry<String, List<String>> entry : siteMap.entrySet()) {
-            JSONObject jsonObject = new JSONObject();
-            String[] countyrFields = entry.getKey().split(SEPARATOR_SIGN);
-            if (countyrFields.length == 2) {
-                jsonObject.put("contryName", countyrFields[0]);
-                jsonObject.put("contryLink", countyrFields[1]);
-            }
-            for (String city : entry.getValue()) {
-                try {
-                    Thread.sleep(3000); /* 暂停3秒 */
-
-                    String[] cityFields = city.split(SEPARATOR_SIGN);
-                    System.out.println(cityFields[0]);
-                    Document document = Jsoup.connect(cityFields[1].toString()).get();
-                    if (document.select("div.zone-title-l").first() == null) {
-                        continue;
-                    }
-                    jsonObject.put("CityName", cityFields[0]);
-                    jsonObject.put("CityLink", cityFields[1]);
-
-                    jsonObject.put("whereToLive", extractWhereToLiveInfo(document));
-                    fillZoneInfo(jsonObject, document);
-                    extractZoneBoundLatlngAndNames(jsonObject, document);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            write2File("HaoQiaoHotelGuideData.txt", jsonObject.toJSONString());
-        }
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray hotelGuideArray = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("data", extractHotelGuide(document));
+        hotelGuideArray.add(jsonObject);
+        return hotelGuideArray;
     }
 
-    public static void extractZoneBoundLatlngAndNames(JSONObject jsonObject, Document document) {
-        for (Element scriptEle : document.select("script[type='text/javascript']")) {
-            if (scriptEle.data().contains("var bound_latlng =")) {
-                JSONArray boundJsonArray = null;
-                JSONArray nameJsonArray = null;
-                String[] zoneScriptInfos = scriptEle.data().split(";");
-                for (String zsi : zoneScriptInfos) {
-                    if (zsi.contains("var bound_latlng =")) {
-                        boundJsonArray = JSON.parseArray(zsi.replace("var bound_latlng =", "").trim());
-                    } else if (zsi.contains("var name_d = ")) {
-                        nameJsonArray = JSON.parseArray(zsi.replace("var name_d = ", "").trim());
-                    }
-                }
-                if (null != boundJsonArray && null != nameJsonArray && boundJsonArray.size() == nameJsonArray.size()) {
-                    jsonObject.put("zoneNameList", nameJsonArray);
-                    jsonObject.put("zoneBoundList", boundJsonArray);
-                }
-                break;
-            }
+    public static JSONObject extractHotelGuide(Document document) {
+        JSONObject jsonObject = null;
+        if (document.select("div.zone-title-l").first() == null) {
+            return jsonObject;
         }
+        jsonObject.put("whereToLive", extractWhereToLiveInfo(document));
+        fillZoneInfo(jsonObject, document);
+        extractZoneBoundLatlngAndNames(jsonObject, document);
+
+        return jsonObject;
     }
 
     public static void fillZoneInfo(JSONObject jsonObject, Document document) {
@@ -129,6 +96,48 @@ public class HaoQiaoHotelGuideCrawler {
         return sb.toString().trim();
     }
 
+    public static void extractZoneBoundLatlngAndNames(JSONObject jsonObject, Document document) {
+        for (Element scriptEle : document.select("script[type='text/javascript']")) {
+            if (scriptEle.data().contains("var bound_latlng =")) {
+                JSONArray boundJsonArray = null;
+                JSONArray nameJsonArray = null;
+                String[] zoneScriptInfos = scriptEle.data().split(";");
+                for (String zsi : zoneScriptInfos) {
+                    if (zsi.contains("var bound_latlng =")) {
+                        boundJsonArray = JSON.parseArray(zsi.replace("var bound_latlng =", "").trim());
+                    } else if (zsi.contains("var name_d = ")) {
+                        nameJsonArray = JSON.parseArray(zsi.replace("var name_d = ", "").trim());
+                    }
+                }
+                if (null != boundJsonArray && null != nameJsonArray && boundJsonArray.size() == nameJsonArray.size()) {
+                    jsonObject.put("zoneNameList", nameJsonArray);
+                    jsonObject.put("zoneBoundList", boundJsonArray);
+                }
+                break;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        generateParams();
+    }
+
+    public static void generateParams() {
+        Map<String, List<String>> siteMap = extractSiteMap("http://www.haoqiao.cn/sitemap.html");
+        for (Map.Entry<String, List<String>> entry : siteMap.entrySet()) {
+            for (String city : entry.getValue()) {
+                String[] countryFields = entry.getKey().split(SEPARATOR_SIGN);
+                String[] cityFields = city.split(SEPARATOR_SIGN);
+                StringBuffer sb = new StringBuffer();
+                sb.append("countryName:'" + countryFields[0] + "',");
+                sb.append("countryLink:'" + countryFields[1] + "',");
+                sb.append("cityName:'" + cityFields[0] + "',");
+                sb.append("url:'" + cityFields[1] + "'");
+                System.out.println(sb.toString().trim());
+            }
+        }
+    }
+
     public static Map<String, List<String>> extractSiteMap(String siteMapUrl) {
         Map<String, List<String>> siteMap = new HashMap<>();
         try {
@@ -152,14 +161,6 @@ public class HaoQiaoHotelGuideCrawler {
         return siteMap;
     }
 
-    public static String extractCountryInfo(Element h1Element) {
-        Element aEle = h1Element.select("a").first();
-        if (aEle != null) {
-            return aEle.text() + SEPARATOR_SIGN + aEle.attr("href");
-        }
-        return null;
-    }
-
     /* 链接格式类似<http://www.haoqiao.cn/mauritius_c666/all.html> 这种形式的链接才会被保留下来*/
     public static List<String> extractCityInfo(Element h1Element) {
         List<String> cityList = new ArrayList<>();
@@ -168,26 +169,19 @@ public class HaoQiaoHotelGuideCrawler {
             return cityList;
         }
         for (Element cityEle : siblingElement.select("a")) {
-            if (cityEle.attr("href").contains("all.html")) {
+            /*if (cityEle.attr("href").contains("all.html")) {
                 cityList.add(cityEle.text() + SEPARATOR_SIGN + cityEle.attr("href"));
-            }
+            }*/
+            cityList.add(cityEle.text() + SEPARATOR_SIGN + cityEle.attr("href"));
         }
         return cityList;
     }
 
-    public static void write2File(String fileName, String content) {
-        try {
-            File file = new File(fileName);
-            if (!file.exists()) {
-                file.createNewFile();
-            }
-            BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                    new FileOutputStream(file, true), "UTF-8"));
-            writer.write(content + "\n");
-            writer.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static String extractCountryInfo(Element h1Element) {
+        Element aEle = h1Element.select("a").first();
+        if (aEle != null) {
+            return aEle.text() + SEPARATOR_SIGN + aEle.attr("href");
         }
+        return null;
     }
-
 }
