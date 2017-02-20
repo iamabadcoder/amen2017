@@ -8,12 +8,15 @@ import org.jsoup.Jsoup;
 import org.jsoup.helper.StringUtil;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
     @Override
@@ -84,7 +87,9 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 if (authorId == null) {
                     throw new Exception("作者ID为NULL");
                 } else if (bbsDetailItemEle.attr("data-uid").equals(authorId.toString())) {
-                    contentSectionsList.addAll(extractSection(bbsDetailItemEle));
+                    if (null == bbsDetailItemEle.select("div.bbsDetailContentQuote").first()) {
+                        contentSectionsList.addAll(extractSection(bbsDetailItemEle));
+                    }
                 }
             }
         } catch (Exception e) {
@@ -100,32 +105,66 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         if (null == bbsDetailContainerEle || bbsDetailContainerEle.children().size() == 0) {
             return sectionBlocksList;
         }
-        for (Element childEle : bbsDetailContainerEle.children()) {
-            Elements imgElements = childEle.select("img[data-type=photo]");
-            if (null != imgElements && imgElements.size() > 0) {
-                for (Element imgEle : imgElements) {
+        for (Element firstLevelChild : bbsDetailContainerEle.children()) {
+            Elements photoElements = firstLevelChild.select("img[data-type=photo]");
+            if (photoElements.size() == 0 && StringUtil.isBlank(firstLevelChild.text())) { /* 无图片,无文本*/
+                continue;
+            } else if (photoElements.size() == 0 && !StringUtil.isBlank(firstLevelChild.text())) { /* 无图片,有文本*/
+                if ("h1".equals(firstLevelChild.tagName())) {
+                    sectionBlocksList.add(generateBlockMap(firstLevelChild.text(), "FIRST_LEVEL_TITLE"));
+                } else if ("h2".equals(firstLevelChild.tagName())) {
+                    sectionBlocksList.add(generateBlockMap(firstLevelChild.text(), "SECOND_LEVEL_TITLE"));
+                } else {
+                    sectionBlocksList.add(generateBlockMap(firstLevelChild.text().trim(), "TEXT"));
+                }
+            } else if (photoElements.size() > 0 && StringUtil.isBlank(firstLevelChild.text())) { /* 有图片,无文本*/
+                for (Element imgEle : photoElements) {
                     Map<String, String> pictureMap = new HashMap<>();
-                    pictureMap.put("content", "http:" + imgEle.attr("src"));
+                    pictureMap.put("content", "http:" + imgEle.attr("data-original"));
                     pictureMap.put("type", "PICTURE");
                     if (null != imgEle.nextElementSibling() && imgEle.nextElementSibling().hasClass("imagedest-wrap")) {
                         pictureMap.put("poi", imgEle.nextElementSibling().text().trim());
                     }
                     sectionBlocksList.add(pictureMap);
                 }
-            } else {
-                if ("h1".equals(childEle.tagName())) {
-                    sectionBlocksList.add(generateBlockMap(childEle.text(), "FIRST_LEVEL_TITLE"));
-                } else if ("h2".equals(childEle.tagName())) {
-                    sectionBlocksList.add(generateBlockMap(childEle.text(), "SECOND_LEVEL_TITLE"));
-                } else {
-                    if (!StringUtil.isBlank(childEle.text().trim())) {
-                        sectionBlocksList.add(generateBlockMap(childEle.text().trim(), "TEXT"));
-                    }
-                }
+            } else if (photoElements.size() > 0 && !StringUtil.isBlank(firstLevelChild.text())) { /* 有图片,有文本*/
+                sectionBlocksList.addAll(extractMixedElement(firstLevelChild));
             }
         }
         return sectionBlocksList;
     }
+
+    public static List<Map<String, String>> extractMixedElement(Element firstLevelElement) {
+        List<Map<String, String>> list = new ArrayList<>();
+        List<Node> childNodes = firstLevelElement.childNodes();
+        String textBlock = "";
+        for (Node node : childNodes) {
+            if ("#text".equals(node.nodeName())) {
+                textBlock = textBlock + node.outerHtml();
+                continue;
+            }
+            Element childEle = (Element) node;
+            Element imgEle = childEle.select("img[data-type=photo]").first();
+            if (null != imgEle) {
+                if (!StringUtil.isBlank(textBlock)) {
+                    list.add(generateBlockMap(textBlock, "TEXT"));
+                    textBlock = "";
+                }
+                if (StringUtil.isBlank(imgEle.attr("src"))) {
+                    list.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                } else {
+                    list.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                }
+            } else {
+                textBlock = textBlock + childEle.text();
+            }
+        }
+        if (!StringUtil.isBlank(textBlock)) {
+            list.add(generateBlockMap(textBlock, "TEXT"));
+        }
+        return list;
+    }
+
 
     public static Map<String, String> generateBlockMap(String content, String type) {
         Map<String, String> map = new HashMap<>();
@@ -211,8 +250,13 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 "http://bbs.qyer.com/thread-326554-1.html\n" +
                 "http://bbs.qyer.com/thread-312626-1.html\n" +
                 "http://bbs.qyer.com/thread-312307-1.html";
+        String regEx = "-([0-9]+)-";
+        Pattern pattern = Pattern.compile(regEx);
         for (String url : urls.split("\n")) {
-            System.out.println("url:'" + url + "'");
+            Matcher matcher = pattern.matcher(url);
+            if (matcher.find()) {
+                System.out.println("id:'" + matcher.group(1) + "'");
+            }
         }
     }
 
