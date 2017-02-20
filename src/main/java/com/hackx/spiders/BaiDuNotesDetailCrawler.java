@@ -24,16 +24,19 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         Document document = TrspExtractUtils.toDocument(html);
         JSONArray noteDetail = new JSONArray();
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document, param.getString("targetUrl")));
+        jsonObject.put("data", extractNoteDetail(document));
         noteDetail.add(jsonObject);
         return noteDetail;
     }
 
-    public static List<Map<String, String>> extractNoteDetail(Document document, String targetUrl) {
+    public static List<Map<String, String>> extractNoteDetail(Document document) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
         try {
             noteDetailList.add(getTravelNoteAttribute(document));
-            noteDetailList.addAll(getTravelNoteContent(document, targetUrl));
+            List<Map<String, String>> noteSection = getTravelNoteContent(document);
+            if (null != noteSection && noteSection.size() > 0) {
+                noteDetailList.addAll(noteSection);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -82,22 +85,15 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         return travelNoteAttribute;
     }
 
-    public static List<Map<String, String>> getTravelNoteContent(Document document, String targetUrl) {
+    public static List<Map<String, String>> getTravelNoteContent(Document document) {
         List<Map<String, String>> travelNotesContentSections = new ArrayList<>();
+        Element masterPostsListElement = document.select("ul.master-posts-list").first();
+        if (masterPostsListElement == null) return travelNotesContentSections;
+
         try {
-            Map<Integer, String> catalogMap = getCatalogInfo(document);
-            for (Map.Entry<Integer, String> entry : catalogMap.entrySet()) {
-                System.out.println(entry.getValue());
-                Element postItemEle = document.select("li#F" + entry.getKey()).first();
-                if (null != postItemEle) {
-                    travelNotesContentSections.addAll(extractPostItemInfo(postItemEle));
-                } else {
-                    document = Jsoup.connect(targetUrl + "-" + entry.getKey()).get();
-                    postItemEle = document.select("li#F" + entry.getKey()).first();
-                    if (null != postItemEle) {
-                        travelNotesContentSections.addAll(extractPostItemInfo(postItemEle));
-                    }
-                }
+            Elements postItemElements = masterPostsListElement.select(".post-item");
+            for (Element postItemEle : postItemElements) {
+                travelNotesContentSections.addAll(extractPostItemInfo(postItemEle));
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,36 +103,66 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
 
     public static List<Map<String, String>> extractPostItemInfo(Element postItemEle) {
         List<Map<String, String>> postItemInfo = new ArrayList<>();
-        try {
-            Element secondaryEle = postItemEle.select("span.secondary").first();
-            if (null != secondaryEle) {
-                postItemInfo.add(generateBlockMap(secondaryEle.text(), "PUBLISH_TIME"));
-            }
+        Element postDetailEle = postItemEle.select("div.post-detail").first();
+        if (null == postDetailEle) return postItemInfo;
 
+        try {
+            /* 发布时间 */
+            Element userInfoEle = postDetailEle.select("div.user-info").first();
+            if (null != userInfoEle) {
+                Element secondaryEle = userInfoEle.select("span.secondary").first();
+                if (null != secondaryEle) {
+                    postItemInfo.add(generateBlockMap(secondaryEle.text(), "PUBLISH_TIME"));
+                }
+            }
+            /* 标题 */
             Element titleEle = postItemEle.select(".title").first();
             if (null != titleEle) {
-                postItemInfo.add(generateBlockMap(titleEle.text(), "TITLE"));
+                Map<String, String> titleMap = new HashMap<>();
+                titleMap.put("content", titleEle.ownText());
+                titleMap.put("type", "TITLE");
+                if (null != titleEle.select("p.places").first()) {
+                    titleMap.put("places", titleEle.select("p.places").first().text());
+                }
+                postItemInfo.add(titleMap);
             }
 
             Element contentEle = postItemEle.select("div.content").first();
-
-            for (int i = 0; i < contentEle.childNodeSize(); i++) {
-                if ("#text".equals(contentEle.childNode(i).nodeName())){
-                    postItemInfo.add(generateBlockMap(contentEle.childNode(i).outerHtml(), "TEXT"));
+            for (Element contentChild : contentEle.children()) {
+                Elements notesPhotoImgElements = contentChild.select("img.notes-photo-img");
+                if (notesPhotoImgElements.size() == 0 && !StringUtil.isBlank(contentChild.text())) { /* 无图片,有文本 */
+                    Document textContDoc = Jsoup.parse(contentChild.html().replace("<br>", "\\n"));
+                    postItemInfo.add(generateBlockMap(textContDoc.text(), "TEXT"));
+                } else if (notesPhotoImgElements.size() == 0 && StringUtil.isBlank(contentChild.text())) { /* 无图片,无文本 */
                     continue;
-                }
-                Element firstLevelChildEle = (Element) contentEle.childNode(i);
-                for (int j = 0; j < firstLevelChildEle.childNodeSize(); j++) {
-                    if ("#text".equals(firstLevelChildEle.childNode(j).nodeName())){
-                        postItemInfo.add(generateBlockMap(firstLevelChildEle.childNode(j).outerHtml(), "TEXT"));
-                        continue;
+                } else if (notesPhotoImgElements.size() > 0 && StringUtil.isBlank(contentChild.text())) { /* 有图片,无文本 */
+                    for (Element imgEle : notesPhotoImgElements) {
+                        if (StringUtil.isBlank(imgEle.attr("src"))) {
+                            postItemInfo.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                        } else {
+                            postItemInfo.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                        }
                     }
-                    Element secondLevelChildEle = (Element) firstLevelChildEle.childNode(j);
-                    postItemInfo.addAll(extractMixedElement(secondLevelChildEle));
+                } else if (notesPhotoImgElements.size() > 0 && !StringUtil.isBlank(contentChild.text())) { /* 有图片,有文本 */
+                    for (int i = 0; i < contentChild.childNodeSize(); i++) {
+                        if ("#text".equals(contentChild.childNode(i).nodeName())) {
+                            postItemInfo.add(generateBlockMap(contentChild.childNode(i).outerHtml(), "TEXT"));
+                            continue;
+                        }
+                        Element firstLevelChildEle = (Element) contentChild.childNode(i);
+                        for (int j = 0; j < firstLevelChildEle.childNodeSize(); j++) {
+                            if ("#text".equals(firstLevelChildEle.childNode(j).nodeName())) {
+                                postItemInfo.add(generateBlockMap(firstLevelChildEle.childNode(j).outerHtml(), "TEXT"));
+                                continue;
+                            }
+                            Element secondLevelChildEle = (Element) firstLevelChildEle.childNode(j);
+                            postItemInfo.addAll(extractMixedElement(secondLevelChildEle));
+                        }
+                    }
                 }
             }
         } catch (Exception e) {
-            System.out.println("Exception when extractPostItemInfo," + e);
+            e.printStackTrace();
         }
         return postItemInfo;
     }
@@ -146,7 +172,7 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         Element notesPhotoImgEle = rootElement.select("img.notes-photo-img").first();
         if (null == notesPhotoImgEle) { /* 纯文本 */
             if (!StringUtil.isBlank(rootElement.text())) {
-                Document textContentDoc = Jsoup.parse(rootElement.html().replaceAll("<br>", "\\\\n"));
+                Document textContentDoc = Jsoup.parse(rootElement.html().replace("<br>", "\n"));
                 list.add(generateBlockMap(textContentDoc.text(), "TEXT"));
             }
         } else {
@@ -190,18 +216,6 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         return list;
     }
 
-    public static Map<Integer, String> getCatalogInfo(Document document) {
-        Map<Integer, String> catalogMap = new HashMap<>();
-        Element catalogListEle = document.select("ul.catalog-list").first();
-        if (null != catalogListEle) {
-            Elements catalogElements = catalogListEle.select("a[data-hash^=#F]");
-            System.out.println(catalogElements.size());
-            for (Element catalogEle : catalogElements) {
-                catalogMap.put(Integer.valueOf(catalogEle.attr("data-hash").replace("#F", "")), catalogEle.ownText());
-            }
-        }
-        return catalogMap;
-    }
 
     public static Map<String, String> generateBlockMap(String content, String type) {
         Map<String, String> map = new HashMap<>();
@@ -212,10 +226,17 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
 
 
     public static void main(String[] args) {
+        String targetUrl = "https://lvyou.baidu.com/notes/d64db92717bab9d9f907574d-1";
         generateUrls();
+        /*try {
+            Document document = Jsoup.connect(targetUrl).get();
+            System.out.println(extractNoteDetail(document));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }*/
     }
 
-    public static void generateUrls(){
+    public static void generateUrls() {
         String urls = "https://lvyou.baidu.com/notes/d64db92717bab9d9f907574d\n" +
                 "https://lvyou.baidu.com/notes/8a634c347fbd61e899e2d34c\n" +
                 "https://lvyou.baidu.com/notes/c50d553d1354b88b3b405e48\n" +
@@ -373,7 +394,7 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 "https://lvyou.baidu.com/notes/76519df75a3d1354b88b5f3e\n" +
                 "https://lvyou.baidu.com/notes/302eff3521fca4c4e983b349";
         for (String url : urls.split("\n")) {
-            System.out.println("url:'" + url + "'");
+            System.out.println("id:'" + url.replace("https://lvyou.baidu.com/notes/", "") + "'");
         }
     }
 }
