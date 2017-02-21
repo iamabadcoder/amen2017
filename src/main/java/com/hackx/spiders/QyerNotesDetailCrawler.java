@@ -24,22 +24,49 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         Document document = TrspExtractUtils.toDocument(html);
         JSONArray noteDetail = new JSONArray();
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document));
-        noteDetail.add(jsonObject);
+        List<Map<String, String>> detailList = extractNoteDetail(document, param);
+        if (detailList.size() > 0) {
+            jsonObject.put("data", detailList);
+            noteDetail.add(jsonObject);
+        }
         return noteDetail;
     }
 
-    public static List<Map<String, String>> extractNoteDetail(Document document) {
+    public static List<Map<String, String>> extractNoteDetail(Document document, JSONObject param) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
         try {
-            Map<String, String> noteAttributeMap = new HashMap<>();
-            noteAttributeMap = getTravelNoteAttribute(document);
-            noteDetailList.add(noteAttributeMap);
-            noteDetailList.addAll(getTravelNoteContent(document, noteAttributeMap.get("authorId")));
+            int pageIndex = Integer.parseInt(String.valueOf(param.get("_pageIndex")));
+            if (pageIndex == 0) {
+                noteDetailList.add(getTravelNoteAttribute(document));
+            }
+            String pageNum = getPageNumFormLocation(document.location());
+            if (null != pageNum && Integer.parseInt(pageNum) == (pageIndex + 1)){
+                List<Map<String, String>> noteContent = getTravelNoteContent(document, getAuthorId(document));
+                noteDetailList.addAll(noteContent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return noteDetailList;
+    }
+
+    public static String getPageNumFormLocation(String localtion) {
+        String[] fields = localtion.split("-");
+        if (fields.length == 3) {
+            return fields[2].trim().replace(".html", "");
+        }
+        return null;
+    }
+
+    public static String getAuthorId(Document document) {
+        Element userNameEle = document.select("a[data-bn-ipg=bbs-thread-top-username]").first();
+        if (null != userNameEle) {
+            if (!StringUtil.isBlank(userNameEle.attr("href"))) {
+                String[] hrefFields = userNameEle.attr("href").split("/");
+                return hrefFields[hrefFields.length - 1];
+            }
+        }
+        return null;
     }
 
     public static Map<String, String> getTravelNoteAttribute(Document document) {
@@ -122,9 +149,9 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                     Map<String, String> pictureMap = new HashMap<>();
                     pictureMap.put("content", "http:" + imgEle.attr("data-original"));
                     pictureMap.put("type", "PICTURE");
-                    if (null != imgEle.nextElementSibling() && imgEle.nextElementSibling().hasClass("imagedest-wrap")) {
+                    /*if (null != imgEle.nextElementSibling() && imgEle.nextElementSibling().hasClass("imagedest-wrap")) {
                         pictureMap.put("poi", imgEle.nextElementSibling().text().trim());
-                    }
+                    }*/
                     sectionBlocksList.add(pictureMap);
                 }
             } else if (photoElements.size() > 0 && !StringUtil.isBlank(firstLevelChild.text())) { /* 有图片,有文本*/
@@ -150,11 +177,21 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                     list.add(generateBlockMap(textBlock, "TEXT"));
                     textBlock = "";
                 }
+
+                Map<String, String> pictureMap = new HashMap<>();
+                pictureMap.put("content", "http:" + imgEle.attr("data-original"));
+                pictureMap.put("type", "PICTURE");
+                /*if (null != imgEle.nextElementSibling() && imgEle.nextElementSibling().hasClass("imagedest-wrap")) {
+                    pictureMap.put("poi", imgEle.nextElementSibling().text().trim());
+                }*/
+                list.add(pictureMap);
+
+                /*list.add(generateBlockMap("http:" + imgEle.attr("data-original"), "PICTURE"));
                 if (StringUtil.isBlank(imgEle.attr("src"))) {
-                    list.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                    list.add(generateBlockMap("http:" + imgEle.attr("data-src"), "PICTURE"));
                 } else {
                     list.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
-                }
+                }*/
             } else {
                 textBlock = textBlock + childEle.text();
             }
@@ -174,10 +211,10 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
     }
 
     public static void main(String[] args) {
-        String targetUrl = "http://bbs.qyer.com/thread-2668276-1.html";
+        String targetUrl = "http://bbs.qyer.com/thread-2659317-2.html";
         try {
             Document document = Jsoup.connect(targetUrl).get();
-            System.out.println(extractNoteDetail(document));
+            System.out.println(extractNoteDetail(document, new JSONObject()));
         } catch (Exception e) {
             e.printStackTrace();
         }

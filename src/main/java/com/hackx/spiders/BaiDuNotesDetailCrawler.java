@@ -24,15 +24,23 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         Document document = TrspExtractUtils.toDocument(html);
         JSONArray noteDetail = new JSONArray();
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document));
-        noteDetail.add(jsonObject);
+        List<Map<String, String>> detailList = extractNoteDetail(document, param);
+        if (detailList.size() > 0) {
+            jsonObject.put("data", detailList);
+            noteDetail.add(jsonObject);
+        }
         return noteDetail;
     }
 
-    public static List<Map<String, String>> extractNoteDetail(Document document) {
+    public static List<Map<String, String>> extractNoteDetail(Document document, JSONObject param) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
         try {
-            noteDetailList.add(getTravelNoteAttribute(document));
+            if (null != param.get("_pageIndex")) {
+                int pindex = Integer.parseInt(String.valueOf(param.get("_pageIndex")));
+                if (pindex == 0) {
+                    noteDetailList.add(getTravelNoteAttribute(document));
+                }
+            }
             List<Map<String, String>> noteSection = getTravelNoteContent(document);
             if (null != noteSection && noteSection.size() > 0) {
                 noteDetailList.addAll(noteSection);
@@ -78,7 +86,7 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 travelNoteAttribute.put("autherName", userInfoEle.select("a.uname").first().text());
                 Element authorImgEle = userInfoEle.getElementsByTag("img").first();
                 if (authorImgEle != null) {
-                    travelNoteAttribute.put("authorPic", authorImgEle.attr("src").substring(2));
+                    travelNoteAttribute.put("authorPic", "http:" + authorImgEle.attr("src"));
                 }
             }
         }
@@ -120,7 +128,7 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
             if (null != titleEle) {
                 Map<String, String> titleMap = new HashMap<>();
                 titleMap.put("content", titleEle.ownText());
-                titleMap.put("type", "TITLE");
+                titleMap.put("type", "FIRST_LEVEL_TITLE");
                 if (null != titleEle.select("p.places").first()) {
                     titleMap.put("places", titleEle.select("p.places").first().text());
                 }
@@ -131,16 +139,24 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
             for (Element contentChild : contentEle.children()) {
                 Elements notesPhotoImgElements = contentChild.select("img.notes-photo-img");
                 if (notesPhotoImgElements.size() == 0 && !StringUtil.isBlank(contentChild.text())) { /* 无图片,有文本 */
-                    Document textContDoc = Jsoup.parse(contentChild.html().replace("<br>", "\\n"));
+                    Document textContDoc = Jsoup.parse(contentChild.html().replace("<br>", "\n"));
                     postItemInfo.add(generateBlockMap(textContDoc.text(), "TEXT"));
                 } else if (notesPhotoImgElements.size() == 0 && StringUtil.isBlank(contentChild.text())) { /* 无图片,无文本 */
                     continue;
                 } else if (notesPhotoImgElements.size() > 0 && StringUtil.isBlank(contentChild.text())) { /* 有图片,无文本 */
                     for (Element imgEle : notesPhotoImgElements) {
                         if (StringUtil.isBlank(imgEle.attr("src"))) {
-                            postItemInfo.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                            if (imgEle.attr("data-src").contains("http")) {
+                                postItemInfo.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                            } else {
+                                postItemInfo.add(generateBlockMap("http:" + imgEle.attr("data-src"), "PICTURE"));
+                            }
                         } else {
-                            postItemInfo.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                            if (imgEle.attr("src").contains("http")) {
+                                postItemInfo.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                            } else {
+                                postItemInfo.add(generateBlockMap("http:" + imgEle.attr("src"), "PICTURE"));
+                            }
                         }
                     }
                 } else if (notesPhotoImgElements.size() > 0 && !StringUtil.isBlank(contentChild.text())) { /* 有图片,有文本 */
@@ -179,9 +195,17 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
             if (StringUtil.isBlank(rootElement.text())) { /* 纯图片 */
                 for (Element picEle : rootElement.select("img.notes-photo-img")) {
                     if (StringUtil.isBlank(picEle.attr("src"))) {
-                        list.add(generateBlockMap(picEle.attr("data-src"), "PICTURE"));
+                        if (picEle.attr("data-src").contains("http")) {
+                            list.add(generateBlockMap(picEle.attr("data-src"), "PICTURE"));
+                        } else {
+                            list.add(generateBlockMap("http:" + picEle.attr("data-src"), "PICTURE"));
+                        }
                     } else {
-                        list.add(generateBlockMap(picEle.attr("src"), "PICTURE"));
+                        if (picEle.attr("src").contains("http")) {
+                            list.add(generateBlockMap(picEle.attr("src"), "PICTURE"));
+                        } else {
+                            list.add(generateBlockMap("http:" + picEle.attr("src"), "PICTURE"));
+                        }
                     }
                 }
             } else { /* 图片和文本混合 */
@@ -200,9 +224,9 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                             textBlock = "";
                         }
                         if (StringUtil.isBlank(imgEle.attr("src"))) {
-                            list.add(generateBlockMap(imgEle.attr("data-src"), "PICTURE"));
+                            list.add(generateBlockMap(imgEle.attr("data-src").contains("http") ? imgEle.attr("data-src") : "http:" + imgEle.attr("data-src"), "PICTURE"));
                         } else {
-                            list.add(generateBlockMap(imgEle.attr("src"), "PICTURE"));
+                            list.add(generateBlockMap(imgEle.attr("src").contains("http") ? imgEle.attr("src") : "http:" + imgEle.attr("src"), "PICTURE"));
                         }
                     } else {
                         textBlock = textBlock + childEle.text();
