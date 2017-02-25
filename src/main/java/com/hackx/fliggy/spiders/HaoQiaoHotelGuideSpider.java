@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -19,16 +19,6 @@ import java.util.Map;
 public class HaoQiaoHotelGuideSpider extends TrspCrawlerExtractorAdapter {
 
     public static final String SEPARATOR_SIGN = "####";
-
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray hotelGuideArray = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractHotelGuide(document));
-        hotelGuideArray.add(jsonObject);
-        return hotelGuideArray;
-    }
 
     public static JSONObject extractHotelGuide(Document document) {
         JSONObject jsonObject = null;
@@ -183,5 +173,15 @@ public class HaoQiaoHotelGuideSpider extends TrspCrawlerExtractorAdapter {
             return aEle.text() + SEPARATOR_SIGN + aEle.attr("href");
         }
         return null;
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray hotelGuideArray = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("data", extractHotelGuide(document));
+        hotelGuideArray.add(jsonObject);
+        return hotelGuideArray;
     }
 }

@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -19,19 +19,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray noteDetail = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        List<Map<String, String>> detailList = extractNoteDetail(document, param);
-        if (detailList.size() > 0) {
-            jsonObject.put("data", detailList);
-            noteDetail.add(jsonObject);
-        }
-        return noteDetail;
-    }
-
     public static List<Map<String, String>> extractNoteDetail(Document document, JSONObject param) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
         try {
@@ -202,7 +189,6 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         return list;
     }
 
-
     public static Map<String, String> generateBlockMap(String content, String type) {
         Map<String, String> map = new HashMap<>();
         map.put("content", content);
@@ -295,6 +281,19 @@ public class QyerNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
                 System.out.println("id:'" + matcher.group(1) + "'");
             }
         }
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        List<Map<String, String>> detailList = extractNoteDetail(document, param);
+        if (detailList.size() > 0) {
+            jsonObject.put("data", detailList);
+            noteDetail.add(jsonObject);
+        }
+        return noteDetail;
     }
 
 }

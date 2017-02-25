@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -18,19 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
-
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> list) throws TrspExtractException {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray noteDetail = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        List<Map<String, String>> detailList = extractNoteDetail(document, param);
-        if (detailList.size() > 0) {
-            jsonObject.put("data", detailList);
-            noteDetail.add(jsonObject);
-        }
-        return noteDetail;
-    }
 
     public static List<Map<String, String>> extractNoteDetail(Document document, JSONObject param) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
@@ -240,14 +227,12 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         return list;
     }
 
-
     public static Map<String, String> generateBlockMap(String content, String type) {
         Map<String, String> map = new HashMap<>();
         map.put("content", content);
         map.put("type", type);
         return map;
     }
-
 
     public static void main(String[] args) {
         String targetUrl = "https://lvyou.baidu.com/notes/d64db92717bab9d9f907574d-1";
@@ -420,5 +405,18 @@ public class BaiDuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         for (String url : urls.split("\n")) {
             System.out.println("id:'" + url.replace("https://lvyou.baidu.com/notes/", "") + "'");
         }
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> list) throws TrspExtractException {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        List<Map<String, String>> detailList = extractNoteDetail(document, param);
+        if (detailList.size() > 0) {
+            jsonObject.put("data", detailList);
+            noteDetail.add(jsonObject);
+        }
+        return noteDetail;
     }
 }

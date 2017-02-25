@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -13,16 +13,6 @@ import org.jsoup.select.Elements;
 import java.util.*;
 
 public class TongChengNotesDetailCrawler2 extends TrspCrawlerExtractorAdapter {
-
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray noteDetail = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document));
-        noteDetail.add(jsonObject);
-        return noteDetail;
-    }
 
     public static List<Map<String, String>> extractNoteDetail(Document document) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
@@ -385,5 +375,15 @@ public class TongChengNotesDetailCrawler2 extends TrspCrawlerExtractorAdapter {
                 System.out.println("url:'" + url + "'");
             }
         }
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("data", extractNoteDetail(document));
+        noteDetail.add(jsonObject);
+        return noteDetail;
     }
 }

@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -15,27 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 public class QunarNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray noteDetail = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document));
-        noteDetail.add(jsonObject);
-        return noteDetail;
-    }
-
-    public List<Map<String, String>> extractNoteDetail(Document document) {
-        List<Map<String, String>> noteDetailList = new ArrayList<>();
-        try {
-            noteDetailList.add(getTravelNoteAttribute(document));
-            noteDetailList.addAll(getTravelNoteContent(document));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return noteDetailList;
-    }
-
     public static Map<String, String> getTravelNoteAttribute(Document document) {
         Map<String, String> noteAttributeMap = new HashMap<>();
         try {
@@ -158,6 +137,27 @@ public class QunarNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         map.put("content", content);
         map.put("type", type);
         return map;
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("data", extractNoteDetail(document));
+        noteDetail.add(jsonObject);
+        return noteDetail;
+    }
+
+    public List<Map<String, String>> extractNoteDetail(Document document) {
+        List<Map<String, String>> noteDetailList = new ArrayList<>();
+        try {
+            noteDetailList.add(getTravelNoteAttribute(document));
+            noteDetailList.addAll(getTravelNoteContent(document));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return noteDetailList;
     }
 
 }

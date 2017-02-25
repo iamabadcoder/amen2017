@@ -1,4 +1,4 @@
-package com.hackx.spiders;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -17,16 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 public class TuNiuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
-
-    @Override
-    protected JSONArray doExtract(String html, JSONObject param, List<String> list) throws TrspExtractException {
-        Document document = TrspExtractUtils.toDocument(html);
-        JSONArray noteDetail = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractNoteDetail(document));
-        noteDetail.add(jsonObject);
-        return noteDetail;
-    }
 
     public static List<Map<String, String>> extractNoteDetail(Document document) {
         List<Map<String, String>> noteDetailList = new ArrayList<>();
@@ -330,6 +320,16 @@ public class TuNiuNotesDetailCrawler extends TrspCrawlerExtractorAdapter {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    protected JSONArray doExtract(String html, JSONObject param, List<String> list) throws TrspExtractException {
+        Document document = TrspExtractUtils.toDocument(html);
+        JSONArray noteDetail = new JSONArray();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("data", extractNoteDetail(document));
+        noteDetail.add(jsonObject);
+        return noteDetail;
     }
 
 
