@@ -1,4 +1,4 @@
-package com.hackx;
+package com.hackx.fliggy.spiders;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
