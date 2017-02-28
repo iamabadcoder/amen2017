@@ -9,9 +9,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,40 +65,6 @@ public class CtripHotelGuideSpider extends TrspCrawlerExtractorAdapter {
         /*generateParams();*/
     }
 
-    public static void generateParams() {
-        String countryListUrl = "http://you.ctrip.com/place/countrylist.html";
-        Map<String, String> placesMap = extractAllPlaces(countryListUrl);
-        for (Map.Entry<String, String> entry : placesMap.entrySet()) {
-            String[] cityFields = entry.getKey().split(SEPARATOR_SIGN);
-            StringBuffer sb = new StringBuffer();
-            sb.append("cityName:'" + cityFields[0] + "',");
-            /*sb.append("cityNameEn:'" + cityFields[1] + "',");*/
-            sb.append("url:'" + entry.getValue() + "'");
-            System.out.println(sb.toString().trim());
-        }
-    }
-
-    public static Map<String, String> extractAllPlaces(String countryListUrl) {
-        Map<String, String> placesMap = new HashMap<>();
-        try {
-            Document document = Jsoup.connect(countryListUrl).get();
-            for (Element countrylistEle : document.select("div.countrylist")) {
-                for (Element liEle : countrylistEle.select("li")) {
-                    if (null != liEle.select("a").first()) {
-                        String placeName = liEle.select("a").first().text().trim();
-                        String placeLink = "http://you.ctrip.com" + liEle.select("a").first().attr("href").trim();
-                        if (null != liEle.select("span").first()) {
-                            placeName = placeName + SEPARATOR_SIGN + liEle.select("span").first().text().trim();
-                        }
-                        placesMap.put(placeName, placeLink);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return placesMap;
-    }
 
     public static void simulateTest() {
 

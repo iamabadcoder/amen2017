@@ -179,9 +179,9 @@ public class HaoQiaoHotelGuideSpider extends TrspCrawlerExtractorAdapter {
     protected JSONArray doExtract(String html, JSONObject param, List<String> warningList) {
         Document document = TrspExtractUtils.toDocument(html);
         JSONArray hotelGuideArray = new JSONArray();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("data", extractHotelGuide(document));
-        hotelGuideArray.add(jsonObject);
+        hotelGuideArray.add((new JSONObject()).put("data", extractHotelGuide(document)));
         return hotelGuideArray;
     }
+
+
 }
