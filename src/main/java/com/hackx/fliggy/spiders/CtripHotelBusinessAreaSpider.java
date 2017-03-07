@@ -76,6 +76,10 @@ public class CtripHotelBusinessAreaSpider extends TrspCrawlerAdapter {
         trspHttpRequestParam.setUrl(placeLink);
         String cityDetailResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
         businessAreaList = crawlBusinessAreas(Jsoup.parse(cityDetailResponseBody));
+        if (businessAreaList.size() == 0) { /* 重试一次 */
+            cityDetailResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
+            businessAreaList = crawlBusinessAreas(Jsoup.parse(cityDetailResponseBody));
+        }
         jsonObject.put("businessAreaList", businessAreaList);
 
         /* 酒店列表抽取 */
@@ -84,6 +88,10 @@ public class CtripHotelBusinessAreaSpider extends TrspCrawlerAdapter {
             trspHttpRequestParam.setUrl(targetUrl);
             String businessAreaResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
             List<String> hotelTitles = crawlHotelInfo(Jsoup.parse(businessAreaResponseBody));
+            if (hotelTitles.size() == 0) { /* 重试一次 */
+                businessAreaResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
+                hotelTitles = crawlHotelInfo(Jsoup.parse(businessAreaResponseBody));
+            }
             Map<String, List<String>> hotelTitleMap = new HashMap<>();
             hotelTitleMap.put(map.get("businessAreaName"), hotelTitles);
             hotelTitleList.add(hotelTitleMap);

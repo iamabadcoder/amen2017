@@ -61,14 +61,17 @@ public class HaoQiaoHotelBusinessAreaSpider extends TrspCrawlerAdapter {
         jsonObject.put("cityName", cityName);
         jsonObject.put("cityLink", cityLink);
 
-        List<Map<String, String>> businessAreaList = new ArrayList<>();
         List<Map<String, List<String>>> hotelTitleList = new ArrayList<>();
 
         /* 商圈信息抽取 */
         TrspHttpRequestParam trspHttpRequestParam = buildRequestParam();
         trspHttpRequestParam.setUrl(cityLink);
         String cityDetailResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
-        businessAreaList = crawlBusinessAreas(Jsoup.parse(cityDetailResponseBody));
+        List<Map<String, String>> businessAreaList = crawlBusinessAreas(Jsoup.parse(cityDetailResponseBody));
+        if (businessAreaList.size() == 0) { /* 重试一次 */
+            cityDetailResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
+            businessAreaList = crawlBusinessAreas(Jsoup.parse(cityDetailResponseBody));
+        }
         jsonObject.put("businessAreaList", businessAreaList);
 
         /* 酒店列表抽取 */
@@ -77,6 +80,10 @@ public class HaoQiaoHotelBusinessAreaSpider extends TrspCrawlerAdapter {
             trspHttpRequestParam.setUrl(targetUrl);
             String businessAreaResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
             List<String> hotelTitles = crawlHotelInfo(Jsoup.parse(businessAreaResponseBody));
+            if (hotelTitles.size() == 0) { /* 重试一次 */
+                businessAreaResponseBody = trspHttpManager.request(trspHttpRequestParam).getBody();
+                hotelTitles = crawlHotelInfo(Jsoup.parse(businessAreaResponseBody));
+            }
             Map<String, List<String>> hotelTitleMap = new HashMap<>();
             hotelTitleMap.put(map.get("businessAreaTitle"), hotelTitles);
             hotelTitleList.add(hotelTitleMap);
